@@ -1,0 +1,8 @@
+# Width of map, minimum size is 20, maximum size 60
+width=24
+# Height of map, minimum size is 20, maximum size
+height=24
+# Array of wall's coordinates (ex.: X,Y), at the borders are added automatically
+# Walls can be added at two formats
+# 1) wall=x,y  - add one wall at given position
+# 2) wall=x1,y1-x2,y2 -add walls between given limits

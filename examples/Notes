@@ -1,0 +1,129 @@
+Umela inteligence
+*****************
+1) Random crazy snake
+   - 1.Vyber nahodne misto
+   - 2.Dojed k nemu
+   - 3.krok 1
+2) Stupen 2
+    - 1. Vyber nejblizsi jidlo
+         - pokud jidlo neexistuje, vyber nejake nahodne misto
+     - 2. dojed k jidlu / mistu
+                -pokud jel k jidlu a jidlo bylo snedeno, krok 1
+     - 3. krok 1
+3) Stupen 3 (neustale hleda nejblizsi jidlo)
+    - 1. Vyber nejblizsi jidlo / pripadne nahodne misto pokud neexistuje zadne jidlo
+      2. Posun se k cili
+      3. Krok 1
+
+
+Chovani AI:
+1) Zaved strategii - (konstruktor)
+2) Uzamkni cil podle strategie
+   2a) pripadne podle strategie hlidej potrebne mezi kroky
+3) Proved A* / BFS algoritmus a najdi cestu k cili
+4) Podle prvniho kroku cesty zmen smer
+5) Krok 2
+
+Herni mapa a vykreslovani
+*************************
+1) Inicializace - vykresli border a "solid" objekty (zdi)
+2) Smycka Update() a Draw()
+
+ Buffering
+ ---------
+ Snizeni poctu vykreslovani (mensi narocnost, zamezeni "problikavani", neni nutne mazat cele okno
+ Buffer (v podobe fronty) prekresluje jen urcene pozice
+
+ Metoda hlidani prazdnych mist
+ -----------------------------
+ Vyzadovano pro generovani jidla, AI BFS algoritmus
+ 0) Pri pridani hrace - odebrat prazdna mista po cele delce tela
+ 1) Pohyb hrace
+    - na miste "ocasu" - pridej podlahu - prazdne misto
+    - na miste nove "hlavy" - odeber prazdne misto
+2) Pridani casti hada
+    - metoda Player::AddPart() vraci pozici nove pridane casti -> na danem miste odeber prazdne misto
+
+Poznamka: Pridani / odebrani jidla se povazuje stale za prazdne misto. Kvuli AI BFS by bylo nutne rozlisit,
+ ze se nejedna o prekazku, proto had jidlo bere jako pruchozi bod
+
+Buffering zmen v mape
+---------------------
+Vyzadanovano pro AI BFS
+AI kontroluje cestu kazdy krok - potrebuje prazdne mista (Empty grid)
+Aby nebylo nutne tuto empty Grid generovat dokola -
+
+-------------------------------------
+       PRINCIP KOMUNIKACE PO SITI
+-------------------------------------
+Z pohledu klienta
+*****************
+1) Priprava
+    - Vytvori klientsky socket a pripoji se na server (ServerFactory). V pripade neuspechu oznami neuspech a prepne stav na ERROR
+    - Prepne stav na SEND_NAME
+2) Stav SEND_NAME
+    - nacte jmeno uzivatele z klavesnice
+    - Posle na server SERVER_TYPE_UPDATE
+    - Musi prijit odpoved typu SERVER_TYPE_OK - prepne stav na SEND_START. V pripade zpravy ERROR - zobrazit neuspech.
+3) SEND_START
+    - od uzivatele ocekava zmacknuti klavesy pro signal, ze je pripraven
+    - Vola jednou ProceedServerData pro ziskani prichozich dat od serveru (prvotni vykresleni, zpravy)
+    - Pri vstupu od uzivatele zasle CLIENT_TYPE_START - ocekava odpoved SERVER_TYPE_OK -> prepne stav na WAIT_START
+4) WAIT_START
+    - ceka od serveru typ SERVER_TYPE_START - signal pro start hry. Klient zpetne odesle SERVER_TYPE_OK
+    - prepne stav na WAIT_FOR_UPDATE
+4) Stav WAIT_FOR_UPDATE
+    - v tomto stavu pouze klient prijima zpravy
+    - dekoduje typ zpravy (MSG - zobraz zpravu, BUFFER - pridej do bufferu, UPDATE)
+    - v pripade typu UPDATE - prepne stav UPDATE_GAME
+5) Stav UPDATE_GAME
+    - vykresli buffer a pripadne zpravy
+    - aktualizuje smer
+    - zasle aktualizaci
+    - ceka na prijeti SERVER_TYPE_OK - prepne stav na WAIT_FOR_UPDATE
+5) ERROR
+    - server neodpovida, zrus pripojeni
+
+Z pohledu server
+****************
+1) Priprava
+    - Vytvori serverovy socket (SC), bind.
+    - Z inicializuje herni mapu a ostatni potrebne zdroje
+    - Prepne stav na WAIT_CLIENTS
+2) stav WAIT_CLIENTS
+    - Pokud je na SC pozadavek, akceptuje ho a zapamatuje prideleny socket
+    - Pro klientske sockety ceka na prichozi jmena
+    - Zpracuje jmeno, priradi patricnemu socketu. Vytvori ServerDriver a prida hrace do mapy
+    - Zvysi pocet klientů
+    - Pokud pocet klientu se rovna MAX_CLIENTS a vsichni klienti jsou pripraveni (zjisti se pomoci projeti kolekce, ze patricne ServerDrivery nejsou nullptr),
+        tak prepne stav na WAIT_CLIENTS_START
+3) WAIT_CLIENTS_START
+    - nasloucha klienty
+    - ocekava zpravu typu CLIENT_TYPE_START - odesle zpet OK. Pokud vsichni klienti poslali, posle zpetne signal SERVER_TYPE_START (ocekava odpoved OK)
+    - prepne na PUSH_UpDATE
+3) stav PUSH_UPDATE
+    - Udela update "herniho sveta" -> update na drivery, hrace, mapu. Posbira informace o bufferu a zpravach
+    - vsechny zmeny (buffer, zpravy) zasle klientum.
+    - V pripade uspesneho odeslani, odesle typ zpravy SERVER_TYPE_UPDATE a prepne stav na WAIT_CLIENTS_UPDATE
+    - Pokud
+4) WAIT_CLIENTS_UPDATE
+    - od vsech klientu ocekava poslany update smeru
+    - pri prijmuti zpravy CLIENT_UPDATE patricnemu socketu a pridelenemu ServerDriver "pushne" zmenu smeru
+    - Klientu posle stav OK
+    - v pripade, ze vsichni klienti poslali sve zmeny (hlidaci "mapa[socket, aktualizovan]" musi mit pro vsechny sockety hodnotu true), zmeni stav na UPDATE
+5) ERROR
+    - do tohoto stavu se server může dostat při různých závažných chybách apod -> Server oznámí chybu a odpojí se
+
+
+
+***********************
+    ODCHYTAVANI CHYB
+**********************
+SERVER
+------------------------
+1) Při WAIT_CLIENTS
+    - server oznámí do konzole lost connection
+2) Při WAIT_CLIENTS_UPDATES
+    - Přechází do havarjního stavu. Uzavírá socket
+3) Při PUSH_UPDATE
+    - Oznamí konec klientům skrze SERVER_TYPE_ERROR

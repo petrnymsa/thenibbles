@@ -1,0 +1,17 @@
+Hra Červi.
+
+Implementujte následující herní módy:
+
+    pro alespoň 2 hráče na jednom počítači,
+    pro alespoň 2 hráče na více PC (síťová hra),
+    pro hru proti počítači (škálovatelná umělá inteligence).
+
+Hra musí splňovat následující funkcionality:
+
+    dodržování pravidel,
+    načítání herních levelů (mapy) ze souboru (vytvořte vhodný formát),
+    oznamovat konec hry a její výsledek.
+
+Červi jsou hra, kde každý z hráčů ovládá jednoho červa. Ten se pohybuje po obrazovce a zanechává za sebou stopu, která se postupně zvětšuje konzumací potravy. Přitom se snaží nenabourat do překážek (zdi, ostatní červi). Pravidla lze obohatit o další herní prvky.
+
+https://en.wikipedia.org/wiki/Nibbles_(video_game)
